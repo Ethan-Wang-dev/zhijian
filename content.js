@@ -1,4 +1,6 @@
 (function () {
+  if (window.__ZHIJIAN_CONTENT_LOADED__) return;
+  window.__ZHIJIAN_CONTENT_LOADED__ = true;
   const ROOT_ID = "zhijian-root";
   let latestResult = null;
 

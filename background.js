@@ -150,12 +150,27 @@ async function collectXPage(url, sourceName) {
     tab = await chrome.tabs.create({ url, active: false });
     await waitForTabLoad(tab.id, 15000);
     await delay(2500);
-    const collected = await chrome.tabs.sendMessage(tab.id, { type: "COLLECT_SOURCE_TWEETS" });
+    const collected = await sendToContent(tab.id, { type: "COLLECT_SOURCE_TWEETS" });
     return (collected?.tweets || []).map((tweet) => ({ ...tweet, sourceType: "x", sourceName }));
   } catch {
     return [];
   } finally {
     if (tab?.id) chrome.tabs.remove(tab.id).catch(() => {});
+  }
+}
+
+async function sendToContent(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (firstError) {
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ["content.css"] });
+      await delay(250);
+      return await chrome.tabs.sendMessage(tabId, message);
+    } catch {
+      throw new Error(`值见无法连接到 X 页面：${firstError.message}`);
+    }
   }
 }
 

@@ -69,7 +69,7 @@ async function analyzeCurrentTab() {
     if (!tab?.id || !/^https:\/\/(x|twitter)\.com\//.test(tab.url || "")) {
       throw new Error("请先打开 X 网页。\n浏览器设置页、商店页等页面无法注入值见。\n");
     }
-    const collected = await chrome.tabs.sendMessage(tab.id, { type: "COLLECT_TWEETS" });
+    const collected = await sendToCurrentTab(tab.id, { type: "COLLECT_TWEETS" });
     const result = await chrome.runtime.sendMessage({ type: "RUN_ANALYSIS", tweets: collected?.tweets || [], source: "manual", tabId: tab.id });
     if (!result?.ok) throw new Error(result?.error || "分析失败");
     status.textContent = `完成：${result.top.length} 条主推荐，${result.others.length} 条候选。\n请查看 X 页面右下角的值见面板。`;
@@ -77,5 +77,20 @@ async function analyzeCurrentTab() {
     status.textContent = error.message || "分析失败";
   } finally {
     button.disabled = false;
+  }
+}
+
+async function sendToCurrentTab(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (firstError) {
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ["content.css"] });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return await chrome.tabs.sendMessage(tabId, message);
+    } catch {
+      throw new Error("值见还没有连接到当前 X 页面。请刷新 X 标签页，然后重新点击扩展按钮；如果仍失败，请在 chrome://extensions 中重新加载值见。");
+    }
   }
 }
