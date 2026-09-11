@@ -15,11 +15,12 @@
     <section id="runStatus" class="run-status">正在读取最近结果…</section>
     <section id="empty" class="empty" hidden>
       <h2>还没有结果</h2>
-      <p>先配置 LLM、账号/主题或 RSS，然后点击“重新扫描”。</p>
+      <p>先配置 LLM、X 数据 API 或 RSS，然后点击“重新扫描”。</p>
       <button id="emptySettings">去设置</button>
     </section>
     <section id="content" hidden>
       <div id="summary" class="summary"></div>
+      <div id="sourceErrors" class="source-errors" hidden></div>
       <div id="sourceStats" class="source-stats"></div>
       <div class="section-heading"><h2>本轮主推荐</h2><span>最多 5 条</span></div>
       <section id="top" class="cards"></section>

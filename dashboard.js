@@ -18,7 +18,7 @@ async function loadResult() {
 async function refresh() {
   const button = document.getElementById("refresh");
   button.disabled = true;
-  document.getElementById("runStatus").textContent = "正在扫描账号、主题和 RSS，可能需要几十秒…";
+  document.getElementById("runStatus").textContent = "正在扫描全站发现、账号、主题和 RSS，可能需要几十秒…";
   try {
     const result = await chrome.runtime.sendMessage({ type: "REFRESH_NOW" });
     if (!result?.ok) throw new Error(result?.error || "扫描失败");
@@ -36,6 +36,10 @@ function renderResult(result) {
   const time = result.at ? new Date(result.at).toLocaleString() : "刚刚";
   document.getElementById("runStatus").textContent = `${time} · ${result.candidateCount || 0} 个候选 · 主推荐 ${result.top?.length || 0} 条`;
   document.getElementById("summary").textContent = result.summary || "本轮已按你的价值需求完成筛选。";
+  const sourceErrors = document.getElementById("sourceErrors");
+  const errors = result.sourceErrors || [];
+  sourceErrors.hidden = !errors.length;
+  sourceErrors.textContent = errors.length ? `部分来源获取失败：${errors.join("；")}` : "";
   const sourceStats = document.getElementById("sourceStats");
   sourceStats.innerHTML = "";
   Object.entries(result.sourceStats || {}).forEach(([name, count]) => {

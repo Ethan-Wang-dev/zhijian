@@ -13,13 +13,18 @@ header p { margin: 8px 0; color: #6b665d; }
 #saveBottomStatus { color: #58724b; font-size: 13px; white-space: nowrap; }
 h2 { margin: 0 0 16px; font-size: 18px; }
 label { display: block; margin: 15px 0; font-size: 14px; font-weight: 600; }
-input, textarea { display: block; width: 100%; margin-top: 7px; padding: 10px 12px; border: 1px solid #cfc7b9; border-radius: 9px; background: #fff; color: #242424; font: inherit; font-weight: 400; }
+input, textarea, select { display: block; width: 100%; margin-top: 7px; padding: 10px 12px; border: 1px solid #cfc7b9; border-radius: 9px; background: #fff; color: #242424; font: inherit; font-weight: 400; }
 textarea { resize: vertical; line-height: 1.5; }
 .hint { color: #777066; font-size: 13px; line-height: 1.6; }
+.hint code { padding: 1px 5px; border-radius: 5px; background: #eee9df; }
+.sub-card { margin-top: 16px; padding: 16px; border: 1px solid #e2d9c8; border-radius: 12px; background: #faf7f0; }
+.sub-card label:first-child { margin-top: 0; }
+.warning { margin-top: 14px; padding: 12px 14px; border: 1px solid #d8a39c; border-radius: 10px; background: #fff1ef; color: #944a42; font-size: 13px; line-height: 1.55; }
 .actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
 button { border: 0; border-radius: 9px; padding: 10px 16px; background: #171717; color: #f4c95d; cursor: pointer; font: inherit; font-weight: 700; }
 button.secondary { border: 1px solid #bcb2a3; background: transparent; color: #39342d; }
 #status { color: #58724b; font-size: 13px; }
+#xStatus { color: #58724b; font-size: 13px; }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 .check input { display: inline-block; width: auto; margin: 0; }
 footer { color: #8b8378; font-size: 12px; }

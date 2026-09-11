@@ -3,6 +3,10 @@ const DEFAULTS = {
   baseUrl: "https://api.openai.com/v1",
   model: "gpt-4o-mini",
   valueProfile: "我时间有限，优先看有新信息、可信、有实际影响、能帮助我思考或做决策的内容。少推荐纯情绪、营销和重复内容。",
+  xProvider: "twitterapiio",
+  xApiKey: "",
+  globalDiscovery: true,
+  xWoeid: "1",
   topics: "",
   accounts: "",
   rssFeeds: "",
@@ -12,7 +16,7 @@ const DEFAULTS = {
   autoAnalyze: true
 };
 
-const fields = ["apiKey", "baseUrl", "model", "valueProfile", "topics", "accounts", "rssFeeds", "maxCandidates", "minScore", "notify", "autoAnalyze"];
+const fields = ["apiKey", "baseUrl", "model", "valueProfile", "xProvider", "xApiKey", "globalDiscovery", "xWoeid", "topics", "accounts", "rssFeeds", "maxCandidates", "minScore", "notify", "autoAnalyze"];
 
 document.addEventListener("DOMContentLoaded", async () => {
   const settings = await chrome.storage.local.get(DEFAULTS);
@@ -23,6 +27,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("save").addEventListener("click", save);
   document.getElementById("saveBottom").addEventListener("click", save);
   document.getElementById("test").addEventListener("click", test);
+  document.getElementById("testX").addEventListener("click", testXSource);
+  document.getElementById("xProvider").addEventListener("change", toggleXFields);
+  toggleXFields();
 });
 
 async function save() {
@@ -41,6 +48,27 @@ async function test() {
   const result = await chrome.runtime.sendMessage({ type: "TEST_CONNECTION" });
   button.disabled = false;
   showStatus(result?.ok ? "连接成功。" : (result?.error || "连接失败。"), !result?.ok);
+}
+
+async function testXSource() {
+  await save();
+  const button = document.getElementById("testX");
+  button.disabled = true;
+  showXStatus("正在测试…", false);
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "TEST_X_SOURCE" });
+    showXStatus(result?.message || result?.error || "测试失败。", !result?.ok);
+  } catch (error) {
+    showXStatus(error.message || "测试失败。", true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function toggleXFields() {
+  const provider = document.getElementById("xProvider").value;
+  document.getElementById("xApiFields").hidden = provider !== "twitterapiio";
+  document.getElementById("xBrowserWarning").hidden = provider !== "browser";
 }
 
 function readValues() {
@@ -92,4 +120,10 @@ function showStatus(text, isError) {
     bottomStatus.textContent = text;
     bottomStatus.style.color = isError ? "#a54a42" : "#58724b";
   }
+}
+
+function showXStatus(text, isError) {
+  const status = document.getElementById("xStatus");
+  status.textContent = text;
+  status.style.color = isError ? "#a54a42" : "#58724b";
 }
