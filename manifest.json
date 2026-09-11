@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "值见",
+  "short_name": "值见",
+  "version": "0.1.0",
+  "description": "每半小时，找到真正值得看的内容。",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://api.openai.com/*",
+    "https://api.deepseek.com/*",
+    "https://openrouter.ai/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "值见",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  }
+}

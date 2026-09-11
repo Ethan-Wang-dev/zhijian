@@ -1,0 +1,62 @@
+#zhijian-root {
+  all: initial;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f5f5f5;
+}
+
+#zhijian-root * { box-sizing: border-box; }
+
+.zhijian-launcher {
+  position: fixed;
+  z-index: 2147483646;
+  right: 20px;
+  bottom: 24px;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: #171717;
+  color: #f4c95d;
+  box-shadow: 0 3px 18px #0005;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.zhijian-panel {
+  position: fixed;
+  z-index: 2147483646;
+  right: 16px;
+  bottom: 16px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(88vh, 850px);
+  overflow: auto;
+  background: #171717;
+  border: 1px solid #3b3b3b;
+  border-radius: 16px;
+  box-shadow: 0 10px 36px #0008;
+  font-size: 13px;
+}
+
+.zhijian-header { display: flex; justify-content: space-between; gap: 12px; padding: 16px 16px 12px; border-bottom: 1px solid #333; }
+.zhijian-header strong { display: block; font-size: 18px; color: #f4c95d; }
+.zhijian-header span { display: block; margin-top: 3px; color: #aaa; font-size: 11px; }
+.zhijian-close { border: 0; background: transparent; color: #aaa; cursor: pointer; font-size: 22px; }
+.zhijian-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+.zhijian-toolbar button, .zhijian-feedback button { border: 1px solid #555; border-radius: 8px; padding: 6px 9px; background: #242424; color: #eee; cursor: pointer; }
+.zhijian-toolbar button:hover, .zhijian-feedback button:hover { border-color: #f4c95d; }
+.zhijian-toolbar button:disabled { opacity: .55; cursor: wait; }
+.zhijian-status { color: #aaa; font-size: 12px; }
+.zhijian-results { padding: 0 12px 14px; }
+.zhijian-empty, .zhijian-summary { color: #aaa; line-height: 1.6; padding: 6px 4px; }
+.zhijian-card { margin: 9px 0; padding: 11px; border: 1px solid #373737; border-radius: 11px; background: #202020; }
+.zhijian-card-meta { display: flex; gap: 7px; flex-wrap: wrap; color: #f4c95d; font-size: 11px; }
+.zhijian-card-meta span:not(:first-child) { color: #999; }
+.zhijian-card-text { display: block; margin-top: 8px; color: #f5f5f5; text-decoration: none; line-height: 1.45; white-space: pre-wrap; }
+.zhijian-card-text:hover { color: #f4c95d; }
+.zhijian-reason { margin: 8px 0 0; color: #bdbdbd; line-height: 1.45; }
+.zhijian-reason b { color: #e4e4e4; }
+.zhijian-feedback { display: flex; gap: 7px; margin-top: 10px; }
+.zhijian-feedback button { color: #aaa; font-size: 11px; }
+.zhijian-others { margin: 12px 0 0; border-top: 1px solid #383838; padding-top: 10px; }
+.zhijian-others summary { color: #f4c95d; cursor: pointer; padding: 4px; }

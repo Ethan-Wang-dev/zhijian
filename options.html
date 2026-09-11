@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>值见设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="settings">
+    <header><div class="brand">值见</div><p>每半小时，找到真正值得看的内容。</p></header>
+    <section class="card">
+      <h2>LLM 设置</h2>
+      <p class="hint">API Key 只保存在当前浏览器的扩展存储中，并直接发送到你填写的服务商。不要把 Key 提交到 GitHub。</p>
+      <label>API Base URL
+        <input id="baseUrl" type="url" placeholder="https://api.openai.com/v1">
+      </label>
+      <label>模型
+        <input id="model" type="text" placeholder="gpt-4o-mini">
+      </label>
+      <label>API Key
+        <input id="apiKey" type="password" autocomplete="off" placeholder="sk-…">
+      </label>
+      <div class="actions"><button id="save">保存设置</button><button id="test" class="secondary">测试连接</button><span id="status"></span></div>
+    </section>
+    <section class="card">
+      <h2>你的价值需求</h2>
+      <label>告诉值见你现在真正关心什么
+        <textarea id="valueProfile" rows="5" placeholder="例如：我在做 AI 产品，优先新技术、真实案例、反常识观点和可执行机会；少看营销和情绪争论。"></textarea>
+      </label>
+      <label>主题 / 关键词（每行一个）
+        <textarea id="topics" rows="3" placeholder="AI 产品
+独立开发
+开源项目"></textarea>
+      </label>
+      <label>账号（每行一个，可填 @handle）
+        <textarea id="accounts" rows="3" placeholder="karpathy
+levelsio"></textarea>
+      </label>
+    </section>
+    <section class="card">
+      <h2>提醒</h2>
+      <label class="check"><input id="autoAnalyze" type="checkbox"> X 页面打开时，每 30 分钟自动分析一次</label>
+      <label class="check"><input id="notify" type="checkbox"> 有新主推荐时发送浏览器通知</label>
+      <label>每轮最多读取候选数
+        <input id="maxCandidates" type="number" min="10" max="100" step="5">
+      </label>
+    </section>
+    <footer>值见 0.1.0 · 当前版本从已经打开的 X 页面读取候选内容。</footer>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
