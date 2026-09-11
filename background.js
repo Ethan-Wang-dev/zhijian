@@ -48,6 +48,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "GET_LAST_RESULT") {
+    chrome.storage.local.get({ lastResult: null }).then(({ lastResult }) => sendResponse({ ok: true, result: lastResult })).catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message.type === "OPEN_DASHBOARD") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") }).then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message.type === "FEEDBACK") {
     saveFeedback(message.feedback).then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
@@ -276,6 +286,8 @@ async function runAnalysis(tweets, source, tabId) {
     summary: analysis.summary
   };
   await chrome.storage.local.set({ lastResult: result });
+  chrome.action.setBadgeText({ text: String(result.top.length || "") });
+  chrome.action.setBadgeBackgroundColor({ color: "#171717" });
 
   if (tabId) {
     chrome.tabs.sendMessage(tabId, { type: "DISPLAY_RESULTS", result }).catch(() => {});
@@ -400,7 +412,7 @@ function popularityBoost(metrics = {}) {
 async function createNotification(result, tabId) {
   const id = `zhijian-${Date.now()}`;
   const first = result.top[0];
-  await chrome.storage.local.set({ [`notification:${id}`]: first?.url || "https://x.com/home" });
+  await chrome.storage.local.set({ [`notification:${id}`]: chrome.runtime.getURL("dashboard.html") });
   chrome.notifications.create(id, {
     type: "basic",
     iconUrl: "icon-128.png",

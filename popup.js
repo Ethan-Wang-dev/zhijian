@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderStatus(current);
 
   document.getElementById("options").addEventListener("click", () => chrome.runtime.openOptionsPage());
+  document.getElementById("dashboard").addEventListener("click", () => chrome.runtime.sendMessage({ type: "OPEN_DASHBOARD" }));
   document.getElementById("refresh").addEventListener("click", refreshConfiguredSources);
   document.getElementById("analyze").addEventListener("click", analyzeCurrentTab);
 });

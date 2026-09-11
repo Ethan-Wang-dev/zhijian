@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>值见结果</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div><div class="brand">值见</div><p>每半小时，找到真正值得看的内容</p></div>
+      <div class="header-actions"><button id="refresh">重新扫描</button><button id="settings" class="secondary">设置</button></div>
+    </header>
+    <section id="runStatus" class="run-status">正在读取最近结果…</section>
+    <section id="empty" class="empty" hidden>
+      <h2>还没有结果</h2>
+      <p>先配置 LLM、账号/主题或 RSS，然后点击“重新扫描”。</p>
+      <button id="emptySettings">去设置</button>
+    </section>
+    <section id="content" hidden>
+      <div id="summary" class="summary"></div>
+      <div id="sourceStats" class="source-stats"></div>
+      <div class="section-heading"><h2>本轮主推荐</h2><span>最多 5 条</span></div>
+      <section id="top" class="cards"></section>
+      <details id="othersWrap" class="others-wrap" hidden>
+        <summary>其他候选</summary>
+        <section id="others" class="cards"></section>
+      </details>
+    </section>
+  </main>
+  <script src="dashboard.js"></script>
+</body>
+</html>
