@@ -87,4 +87,9 @@ function showStatus(text, isError) {
   const status = document.getElementById("status");
   status.textContent = text;
   status.style.color = isError ? "#a54a42" : "#58724b";
+  const bottomStatus = document.getElementById("saveBottomStatus");
+  if (bottomStatus) {
+    bottomStatus.textContent = text;
+    bottomStatus.style.color = isError ? "#a54a42" : "#58724b";
+  }
 }
