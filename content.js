@@ -77,6 +77,16 @@
     return tweets;
   }
 
+  async function collectSourceTweets() {
+    const collected = new Map(extractTweets(60).map((tweet) => [tweet.id, tweet]));
+    for (let step = 0; step < 2; step += 1) {
+      window.scrollBy({ top: Math.max(window.innerHeight * 1.8, 900), behavior: "auto" });
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      extractTweets(60).forEach((tweet) => collected.set(tweet.id, tweet));
+    }
+    return [...collected.values()];
+  }
+
   function readMetrics(article) {
     const metrics = { likes: 0, reposts: 0, replies: 0, views: 0 };
     for (const element of article.querySelectorAll("[aria-label]")) {
@@ -117,7 +127,7 @@
     const card = document.createElement("article");
     card.className = "zhijian-card";
     card.innerHTML = `
-      <div class="zhijian-card-meta"><span>${label} ${rank}</span><span>${escapeHtml(item.type || "内容")}</span><span>${Math.round(item.score || 0)} 分</span></div>
+      <div class="zhijian-card-meta"><span>${label} ${rank}</span><span>${escapeHtml(item.type || "内容")}</span><span>${Math.round(item.score || 0)} 分</span><span>${escapeHtml(item.sourceName || "X")}</span></div>
       <a class="zhijian-card-text" href="${safeUrl(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.text || "")}</a>
       <p class="zhijian-reason"><b>为什么推荐：</b>${escapeHtml(item.worth_reading_reason || "与当前价值偏好匹配。")}</p>
       <p class="zhijian-reason"><b>互动判断：</b>${escapeHtml(item.worth_interacting_reason || "请阅读原文后自行判断。")}</p>
@@ -145,6 +155,10 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "COLLECT_TWEETS") {
       sendResponse({ tweets: extractTweets(60) });
+      return true;
+    }
+    if (message.type === "COLLECT_SOURCE_TWEETS") {
+      collectSourceTweets().then((tweets) => sendResponse({ tweets })).catch(() => sendResponse({ tweets: [] }));
       return true;
     }
     if (message.type === "DISPLAY_RESULTS") {

@@ -28,25 +28,36 @@
       <label>告诉值见你现在真正关心什么
         <textarea id="valueProfile" rows="5" placeholder="例如：我在做 AI 产品，优先新技术、真实案例、反常识观点和可执行机会；少看营销和情绪争论。"></textarea>
       </label>
-      <label>主题 / 关键词（每行一个）
+    </section>
+    <section class="card">
+      <h2>自动采集源</h2>
+      <p class="hint">值见会在后台短暂打开非活动的 X 搜索页，使用你当前的 X 登录态读取账号和主题；RSS/Atom 内容会直接从订阅地址读取。</p>
+      <label>X 主题 / 关键词（每行一个，最多 5 个）
         <textarea id="topics" rows="3" placeholder="AI 产品
 独立开发
 开源项目"></textarea>
       </label>
-      <label>账号（每行一个，可填 @handle）
+      <label>X 账号（每行一个，可填 @handle，最多 12 个）
         <textarea id="accounts" rows="3" placeholder="karpathy
 levelsio"></textarea>
+      </label>
+      <label>RSS / Atom 地址（每行一个，最多 12 个）
+        <textarea id="rssFeeds" rows="4" placeholder="https://example.com/feed.xml
+https://example.com/atom.xml"></textarea>
       </label>
     </section>
     <section class="card">
       <h2>提醒</h2>
-      <label class="check"><input id="autoAnalyze" type="checkbox"> X 页面打开时，每 30 分钟自动分析一次</label>
+      <label class="check"><input id="autoAnalyze" type="checkbox"> 每 30 分钟自动扫描配置的账号、主题和订阅源</label>
       <label class="check"><input id="notify" type="checkbox"> 有新主推荐时发送浏览器通知</label>
       <label>每轮最多读取候选数
         <input id="maxCandidates" type="number" min="10" max="100" step="5">
       </label>
+      <label>主推荐最低价值分
+        <input id="minScore" type="number" min="0" max="100" step="5">
+      </label>
     </section>
-    <footer>值见 0.1.0 · 当前版本从已经打开的 X 页面读取候选内容。</footer>
+    <footer>值见 0.2.0 · 浏览器运行时自动扫描；X 采集需要有效登录态。</footer>
   </main>
   <script src="options.js"></script>
 </body>

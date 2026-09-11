@@ -1,18 +1,63 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const status = document.getElementById("status");
   const current = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
-  if (!current?.configured) {
-    status.textContent = "还没有配置 LLM API Key，请先打开设置。";
-  } else if (current.lastResult) {
-    const time = new Date(current.lastResult.at).toLocaleString();
-    status.textContent = `已配置 ${current.model}\n上次分析：${time}，${current.lastResult.count} 条主推荐`;
-  } else {
-    status.textContent = `已配置 ${current.model}\n还没有分析记录。`;
-  }
+  renderStatus(current);
 
   document.getElementById("options").addEventListener("click", () => chrome.runtime.openOptionsPage());
+  document.getElementById("refresh").addEventListener("click", refreshConfiguredSources);
   document.getElementById("analyze").addEventListener("click", analyzeCurrentTab);
 });
+
+function renderStatus(current) {
+  const status = document.getElementById("status");
+  if (!current?.configured) {
+    status.textContent = "还没有配置 LLM API Key，请先打开设置。";
+  } else if (!current.sourceCount) {
+    status.textContent = "LLM 已配置，但还没有添加账号、主题或 RSS 源。";
+  } else if (current.lastResult) {
+    const time = new Date(current.lastResult.at).toLocaleString();
+    status.textContent = `${current.sourceCount} 个配置源 · ${current.model}\n上次：${time}，${current.lastResult.candidateCount} 个候选 → ${current.lastResult.count} 条主推荐`;
+    renderResults(current.lastResult.top || []);
+  } else {
+    status.textContent = `${current.sourceCount} 个配置源 · ${current.model}\n还没有分析记录。`;
+  }
+}
+
+function renderResults(items) {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+  items.forEach((item, index) => {
+    const link = document.createElement("a");
+    link.className = "result";
+    link.href = item.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    const meta = document.createElement("span");
+    meta.className = "result-meta";
+    meta.textContent = `${index + 1} · ${item.score || 0} 分 · ${item.type || "内容"} · ${item.sourceName || "来源"}`;
+    link.appendChild(meta);
+    link.append(document.createTextNode(String(item.title || item.text || "").slice(0, 100)));
+    container.appendChild(link);
+  });
+}
+
+async function refreshConfiguredSources() {
+  const button = document.getElementById("refresh");
+  const status = document.getElementById("status");
+  button.disabled = true;
+  status.textContent = "正在扫描账号、主题和 RSS，可能需要几十秒…";
+  document.getElementById("results").innerHTML = "";
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "REFRESH_NOW" });
+    if (!result?.ok) throw new Error(result?.error || "扫描失败，请检查配置和 X 登录状态。");
+    status.textContent = `完成：${result.candidateCount} 个候选 → ${result.top.length} 条主推荐。`;
+    renderResults(result.top || []);
+  } catch (error) {
+    status.textContent = error.message || "扫描失败";
+  } finally {
+    button.disabled = false;
+  }
+}
 
 async function analyzeCurrentTab() {
   const button = document.getElementById("analyze");

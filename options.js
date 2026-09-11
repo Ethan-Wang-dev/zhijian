@@ -5,12 +5,14 @@ const DEFAULTS = {
   valueProfile: "我时间有限，优先看有新信息、可信、有实际影响、能帮助我思考或做决策的内容。少推荐纯情绪、营销和重复内容。",
   topics: "",
   accounts: "",
+  rssFeeds: "",
   maxCandidates: 40,
+  minScore: 65,
   notify: true,
   autoAnalyze: true
 };
 
-const fields = ["apiKey", "baseUrl", "model", "valueProfile", "topics", "accounts", "maxCandidates", "notify", "autoAnalyze"];
+const fields = ["apiKey", "baseUrl", "model", "valueProfile", "topics", "accounts", "rssFeeds", "maxCandidates", "minScore", "notify", "autoAnalyze"];
 
 document.addEventListener("DOMContentLoaded", async () => {
   const settings = await chrome.storage.local.get(DEFAULTS);
@@ -26,6 +28,7 @@ async function save() {
   const values = readValues();
   await chrome.storage.local.set(values);
   await requestEndpointPermission(values.baseUrl);
+  await requestFeedPermissions(values.rssFeeds);
   showStatus("已保存。", false);
 }
 
@@ -46,6 +49,7 @@ function readValues() {
     values[field] = element.type === "checkbox" ? element.checked : element.value.trim();
   });
   values.maxCandidates = Math.max(10, Math.min(100, Number(values.maxCandidates) || 40));
+  values.minScore = Math.max(0, Math.min(100, Number(values.minScore) || 65));
   return values;
 }
 
@@ -57,6 +61,24 @@ async function requestEndpointPermission(baseUrl) {
     }
   } catch {
     // The fetch will provide a more useful error if the provider URL is invalid.
+  }
+}
+
+async function requestFeedPermissions(rssFeeds) {
+  const origins = [...new Set(String(rssFeeds || "").split(/[\n,，]/).map((value) => {
+    try {
+      const url = new URL(value.trim());
+      return /^https?:$/.test(url.protocol) ? `${url.origin}/*` : null;
+    } catch {
+      return null;
+    }
+  }).filter(Boolean))];
+  if (origins.length) {
+    try {
+      await chrome.permissions.request({ origins });
+    } catch {
+      // Missing permissions are reported when a scan cannot read a feed.
+    }
   }
 }
 
