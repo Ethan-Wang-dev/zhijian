@@ -3,6 +3,8 @@
   window.__ZHIJIAN_CONTENT_LOADED__ = true;
   const ROOT_ID = "zhijian-root";
   let latestResult = null;
+  let capturePageKey = getPageKey();
+  const capturedTweets = new Map();
 
   function init() {
     if (document.getElementById(ROOT_ID)) return;
@@ -16,10 +18,10 @@
           <button class="zhijian-close" aria-label="关闭">×</button>
         </header>
         <div class="zhijian-toolbar">
-          <button class="zhijian-analyze">分析当前页面</button>
-          <span class="zhijian-status">等待分析</span>
+          <button class="zhijian-analyze">快速分析已加载内容</button>
+          <span class="zhijian-status">只读取当前页，不自动滚动</span>
         </div>
-        <div class="zhijian-results"><div class="zhijian-empty">滚动加载一些帖子后，点击“分析当前页面”。</div></div>
+        <div class="zhijian-results"><div class="zhijian-empty">点击后只读取当前页面已经加载的帖子，不会自动滚动、点击或打开新页面。你手动滚动后再次点击即可继续累积。</div></div>
       </section>`;
     document.body.appendChild(root);
     root.querySelector(".zhijian-launcher").addEventListener("click", () => togglePanel(root, true));
@@ -34,12 +36,15 @@
 
   function requestAnalysis(root) {
     const status = root.querySelector(".zhijian-status");
-    status.textContent = "正在读取页面并判断…";
+    status.textContent = "正在读取当前已加载内容并判断（不会自动滚动）…";
     root.querySelector(".zhijian-analyze").disabled = true;
+    const tweets = extractTweets(240);
+    status.textContent = `已读取 ${tweets.length} 条，正在判断（不会自动滚动）…`;
     chrome.runtime.sendMessage({
       type: "RUN_ANALYSIS",
       source: "manual",
-      tweets: extractTweets(50),
+      tweets,
+      capturedCount: tweets.length,
       tabId: null
     }).then((response) => {
       root.querySelector(".zhijian-analyze").disabled = false;
@@ -54,7 +59,20 @@
     });
   }
 
-  function extractTweets(limit = 50) {
+  function getPageKey() {
+    return `${location.pathname}${location.search}`;
+  }
+
+  function resetCaptureIfNeeded() {
+    const currentPageKey = getPageKey();
+    if (currentPageKey !== capturePageKey) {
+      capturePageKey = currentPageKey;
+      capturedTweets.clear();
+    }
+  }
+
+  function extractTweets(limit = 240) {
+    resetCaptureIfNeeded();
     const seen = new Set();
     const tweets = [];
     for (const article of document.querySelectorAll('article[data-testid="tweet"]')) {
@@ -63,30 +81,29 @@
       const link = [...article.querySelectorAll('a[href*="/status/"]')]
         .map((anchor) => anchor.href)
         .find((href) => /\/status\/\d+/.test(href));
-      const id = link?.match(/\/status\/(\d+)/)?.[1] || `${text.slice(0, 80)}-${tweets.length}`;
+      const author = article.querySelector('[data-testid="User-Name"]')?.innerText?.split("\n")[0] || "未知作者";
+      const id = link?.match(/\/status\/(\d+)/)?.[1] || `${author}|${text.slice(0, 120)}`;
       if (!text || seen.has(id)) continue;
       seen.add(id);
       const metrics = readMetrics(article);
-      tweets.push({
+      const tweet = {
         id,
         text,
         url: link || location.href,
-        author: article.querySelector('[data-testid="User-Name"]')?.innerText?.split("\n")[0] || "未知作者",
+        author,
         createdAt: article.querySelector("time")?.dateTime || null,
         metrics
-      });
+      };
+      tweets.push(tweet);
+      capturedTweets.set(id, tweet);
     }
-    return tweets;
+    while (capturedTweets.size > 300) capturedTweets.delete(capturedTweets.keys().next().value);
+    return [...capturedTweets.values()];
   }
 
   async function collectSourceTweets() {
-    const collected = new Map(extractTweets(60).map((tweet) => [tweet.id, tweet]));
-    for (let step = 0; step < 2; step += 1) {
-      window.scrollBy({ top: Math.max(window.innerHeight * 1.8, 900), behavior: "auto" });
-      await new Promise((resolve) => setTimeout(resolve, 1100));
-      extractTweets(60).forEach((tweet) => collected.set(tweet.id, tweet));
-    }
-    return [...collected.values()];
+    // Browser mode is intentionally passive: do not scroll, click, or trigger more X loading.
+    return extractTweets(240);
   }
 
   function readMetrics(article) {
@@ -112,15 +129,16 @@
 
   function renderResult(root, result) {
     latestResult = result;
-    root.querySelector(".zhijian-status").textContent = `本轮 ${result.top.length} 条主推荐，${result.others.length} 条候选`;
+    const archive = result.archive || result.others || [];
+    root.querySelector(".zhijian-status").textContent = `已读取 ${result.readCount || result.candidateCount || 0} 条，主推荐 ${result.top.length} 条，归档 ${archive.length} 条`;
     const results = root.querySelector(".zhijian-results");
     results.innerHTML = `<p class="zhijian-summary">${escapeHtml(result.summary || "本轮已完成筛选。")}</p>`;
     result.top.forEach((item, index) => results.appendChild(createCard(item, index + 1, "主推荐")));
-    if (result.others.length) {
+    if (archive.length) {
       const details = document.createElement("details");
       details.className = "zhijian-others";
-      details.innerHTML = `<summary>其他候选（${result.others.length}）</summary>`;
-      result.others.forEach((item, index) => details.appendChild(createCard(item, index + 1, "候选")));
+      details.innerHTML = `<summary>归档（${archive.length}）</summary>`;
+      archive.forEach((item, index) => details.appendChild(createCard(item, index + 1, "归档")));
       results.appendChild(details);
     }
   }
@@ -156,7 +174,8 @@
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "COLLECT_TWEETS") {
-      sendResponse({ tweets: extractTweets(60) });
+      const tweets = extractTweets(240);
+      sendResponse({ tweets, capturedCount: tweets.length });
       return true;
     }
     if (message.type === "COLLECT_SOURCE_TWEETS") {

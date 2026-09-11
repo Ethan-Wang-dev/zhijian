@@ -34,7 +34,9 @@ function renderResult(result) {
   document.getElementById("empty").hidden = true;
   document.getElementById("content").hidden = false;
   const time = result.at ? new Date(result.at).toLocaleString() : "刚刚";
-  document.getElementById("runStatus").textContent = `${time} · ${result.candidateCount || 0} 个候选 · 主推荐 ${result.top?.length || 0} 条`;
+  const archive = result.archive || result.others || [];
+  const readCount = result.readCount || result.candidateCount || 0;
+  document.getElementById("runStatus").textContent = `${time} · 已读取 ${readCount} 条 · 主推荐 ${result.top?.length || 0} 条 · 归档 ${archive.length} 条`;
   document.getElementById("summary").textContent = result.summary || "本轮已按你的价值需求完成筛选。";
   const sourceErrors = document.getElementById("sourceErrors");
   const errors = result.sourceErrors || [];
@@ -50,8 +52,8 @@ function renderResult(result) {
   });
   renderItems(document.getElementById("top"), result.top || []);
   const othersWrap = document.getElementById("othersWrap");
-  othersWrap.hidden = !(result.others || []).length;
-  renderItems(document.getElementById("others"), result.others || []);
+  othersWrap.hidden = !archive.length;
+  renderItems(document.getElementById("others"), archive);
 }
 
 function renderItems(container, items) {

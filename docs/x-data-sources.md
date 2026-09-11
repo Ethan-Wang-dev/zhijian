@@ -1,18 +1,18 @@
 # X 数据源选择
 
-本文记录值见 0.3.0 选择 X 数据源的依据。页面能力和价格核验日期为 2026-09-11；第三方服务可能随时调整，接入前应重新确认。
+本文记录值见 0.3.1 选择 X 数据源的依据。页面能力和价格核验日期为 2026-09-11；第三方服务可能随时调整，接入前应重新确认。
 
 ## 结论
 
 不存在一个已经确认“免费、稳定、允许自动提取，并且直接提供全站高价值帖子正文”的热门榜网站。可用方案应拆成三层：
 
-1. 趋势或搜索 API 负责召回候选。
+1. 趋势或搜索 API 负责召回待评审内容。
 2. 数据 API 或 RSS 服务负责返回具体帖子。
 3. 值见的 LLM 负责判断这些内容是否符合当前用户的价值需求。
 
 值见 0.3.0 首先接入 TwitterAPI.io，因为它同时有地区趋势和高级帖子搜索，并且不需要用户的 X 登录态。
 
-## 已核验的候选
+## 已核验的数据来源
 
 | 来源 | 能拿到什么 | 价格/限制摘要 | 当前决定 |
 | --- | --- | --- | --- |
@@ -21,7 +21,7 @@
 | [Desearch](https://www.desearch.ai/twitter-api) | 实时/语义搜索、帖子、账号、互动信号、30 天历史 | 页面标示 `$0.15 / 1,000 posts` 和少量免费额度 | 能力适合 AI 检索，待进一步验证接口稳定性和数据条款 |
 | [Sorsa](https://api.sorsa.io/blog/twitter-trends-api) | WOEID 趋势、搜索和多类 X 接口 | 100 次免费请求，随后从 `$49/月` 起；趋势与搜索分开调用 | 可作为未来备选适配器 |
 | [RSS.app](https://rss.app/rss-feed/create-twitter-rss-feed) | 把 X 用户、Hashtag 或搜索转换为 RSS | 7 天试用；不同套餐刷新频率和 Feed 数不同 | 无需专门适配，生成的 Feed 可直接填入值见 |
-| [Trends24](https://trends24.in/) / [xTrends](https://xtrends.iamrohit.in/) | 地区趋势名、排名和估算帖子量 | 未确认稳定的正式帖子 API | 只能做趋势线索，不能提供完整候选内容 |
+| [Trends24](https://trends24.in/) / [xTrends](https://xtrends.iamrohit.in/) | 地区趋势名、排名和估算帖子量 | 未确认稳定的正式帖子 API | 只能做趋势线索，不能提供完整帖子内容 |
 | [GetDayTrends](https://getdaytrends.com/) | 地区趋势、Most Tweeted、趋势历史 | Terms 明确禁止 mass extract、cache、save 或 transfer 网站信息 | 不作为自动采集源 |
 
 ## 已实现的 TwitterAPI.io 调用

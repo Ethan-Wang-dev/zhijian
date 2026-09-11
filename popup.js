@@ -20,7 +20,9 @@ function renderStatus(current) {
   } else if (current.lastResult) {
     const time = new Date(current.lastResult.at).toLocaleString();
     const warning = current.lastResult.sourceErrors?.length ? `\n${current.lastResult.sourceErrors.length} 个来源获取失败，可在结果面板查看。` : "";
-    status.textContent = `${current.sourceCount} 个配置源 · ${current.model}\n上次：${time}，${current.lastResult.candidateCount} 个候选 → ${current.lastResult.count} 条主推荐${warning}`;
+    const readCount = current.lastResult.readCount || current.lastResult.candidateCount || 0;
+    const archiveCount = current.lastResult.archiveCount ?? Math.max(0, (current.lastResult.others || []).length);
+    status.textContent = `${current.sourceCount} 个配置源 · ${current.model}\n上次：${time}，已读取 ${readCount} 条 → ${current.lastResult.count} 条主推荐，${archiveCount} 条归档${warning}`;
     renderResults(current.lastResult.top || []);
   } else {
     status.textContent = `${current.sourceCount} 个配置源 · ${current.model}\n还没有分析记录。`;
@@ -55,7 +57,7 @@ async function refreshConfiguredSources() {
     const result = await chrome.runtime.sendMessage({ type: "REFRESH_NOW" });
     if (!result?.ok) throw new Error(result?.error || "扫描失败，请检查 LLM、X 数据源和 RSS 配置。");
     const warning = result.sourceErrors?.length ? ` ${result.sourceErrors.length} 个来源失败。` : "";
-    status.textContent = `完成：${result.candidateCount} 个候选 → ${result.top.length} 条主推荐。${warning}`;
+    status.textContent = `完成：已读取 ${result.readCount || result.candidateCount} 条，${result.top.length} 条主推荐，${(result.archive || result.others || []).length} 条归档。${warning}`;
     renderResults(result.top || []);
   } catch (error) {
     status.textContent = error.message || "扫描失败";
@@ -75,9 +77,9 @@ async function analyzeCurrentTab() {
       throw new Error("请先打开 X 网页。\n浏览器设置页、商店页等页面无法注入值见。\n");
     }
     const collected = await sendToCurrentTab(tab.id, { type: "COLLECT_TWEETS" });
-    const result = await chrome.runtime.sendMessage({ type: "RUN_ANALYSIS", tweets: collected?.tweets || [], source: "manual", tabId: tab.id });
+    const result = await chrome.runtime.sendMessage({ type: "RUN_ANALYSIS", tweets: collected?.tweets || [], capturedCount: collected?.capturedCount, source: "manual", tabId: tab.id });
     if (!result?.ok) throw new Error(result?.error || "分析失败");
-    status.textContent = `完成：${result.top.length} 条主推荐，${result.others.length} 条候选。\n请查看 X 页面右下角的值见面板。`;
+    status.textContent = `完成：已读取 ${result.readCount || collected?.tweets?.length || 0} 条，${result.top.length} 条主推荐，${(result.archive || result.others || []).length} 条归档。\n请查看 X 页面右下角的值见面板。`;
   } catch (error) {
     status.textContent = error.message || "分析失败";
   } finally {
