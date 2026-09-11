@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (element) element.type === "checkbox" ? element.checked = Boolean(settings[field]) : element.value = settings[field];
   });
   document.getElementById("save").addEventListener("click", save);
+  document.getElementById("saveBottom").addEventListener("click", save);
   document.getElementById("test").addEventListener("click", test);
 });
 

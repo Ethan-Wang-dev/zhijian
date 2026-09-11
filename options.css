@@ -6,6 +6,9 @@ header { margin-bottom: 24px; }
 .brand { font-size: 38px; font-weight: 800; letter-spacing: .08em; }
 header p { margin: 8px 0; color: #6b665d; }
 .card { margin: 16px 0; padding: 24px; border: 1px solid #ded8cd; border-radius: 16px; background: #fffdf9; box-shadow: 0 5px 18px #6e5d3b0d; }
+.save-card { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 16px 0; padding: 20px 24px; border: 1px solid #cdbb90; border-radius: 16px; background: #fff8df; box-shadow: 0 5px 18px #6e5d3b18; }
+.save-card strong { font-size: 16px; }
+.save-card p { margin: 6px 0 0; color: #766f64; font-size: 13px; line-height: 1.5; }
 h2 { margin: 0 0 16px; font-size: 18px; }
 label { display: block; margin: 15px 0; font-size: 14px; font-weight: 600; }
 input, textarea { display: block; width: 100%; margin-top: 7px; padding: 10px 12px; border: 1px solid #cfc7b9; border-radius: 9px; background: #fff; color: #242424; font: inherit; font-weight: 400; }
@@ -18,3 +21,4 @@ button.secondary { border: 1px solid #bcb2a3; background: transparent; color: #3
 .check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 .check input { display: inline-block; width: auto; margin: 0; }
 footer { color: #8b8378; font-size: 12px; }
+@media (max-width: 560px) { .save-card { align-items: stretch; flex-direction: column; gap: 14px; } }
