@@ -78,10 +78,11 @@ function renderItems(container, items) {
 }
 
 function safeUrl(url) {
+  const fallback = chrome.runtime.getURL("dashboard.html");
   try {
-    const parsed = new URL(url || "https://x.com/home");
-    return /^https?:$/.test(parsed.protocol) ? parsed.href.replace(/"/g, "%22") : "https://x.com/home";
-  } catch { return "https://x.com/home"; }
+    const parsed = new URL(url || fallback);
+    return /^https?:$/.test(parsed.protocol) ? parsed.href.replace(/"/g, "%22") : fallback;
+  } catch { return fallback; }
 }
 
 function escapeHtml(value) {

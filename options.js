@@ -22,7 +22,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const settings = await chrome.storage.local.get(DEFAULTS);
   fields.forEach((field) => {
     const element = document.getElementById(field);
-    if (element) element.type === "checkbox" ? element.checked = Boolean(settings[field]) : element.value = settings[field];
+    if (!element) return;
+    const value = field === "xProvider"
+      ? (settings[field] === "off" ? "off" : "twitterapiio")
+      : settings[field];
+    element.type === "checkbox" ? element.checked = Boolean(value) : element.value = value;
   });
   document.getElementById("save").addEventListener("click", save);
   document.getElementById("saveBottom").addEventListener("click", save);
@@ -68,7 +72,6 @@ async function testXSource() {
 function toggleXFields() {
   const provider = document.getElementById("xProvider").value;
   document.getElementById("xApiFields").hidden = provider !== "twitterapiio";
-  document.getElementById("xBrowserWarning").hidden = provider !== "browser";
 }
 
 function readValues() {

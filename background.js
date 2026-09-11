@@ -19,7 +19,7 @@ const DEFAULTS = {
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(DEFAULTS).then((settings) => {
-    chrome.storage.local.set(settings);
+    chrome.storage.local.set(normalizeSettings(settings));
   });
   chrome.alarms.create(ALARM_NAME, { periodInMinutes: 30 });
 });
@@ -35,8 +35,15 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "RUN_PAGE_ANALYSIS") {
+    runPageAnalysis(message.pageUrl || "")
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message.type === "RUN_ANALYSIS") {
-    runAnalysis(message.tweets || [], message.source || "manual", message.tabId || sender.tab?.id, [], message.capturedCount)
+    runAnalysis(message.tweets || [], message.source || "manual", [], message.capturedCount)
       .then(sendResponse)
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
@@ -79,13 +86,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function getSettings() {
-  return chrome.storage.local.get(DEFAULTS);
+  return normalizeSettings(await chrome.storage.local.get(DEFAULTS));
+}
+
+function normalizeSettings(settings) {
+  const normalized = { ...DEFAULTS, ...(settings || {}) };
+  // Older versions offered a browser-login provider. Migrate it to the safe
+  // API provider instead of allowing a stale setting to re-enable page access.
+  normalized.xProvider = normalized.xProvider === "off" ? "off" : "twitterapiio";
+  return normalized;
 }
 
 async function getStatus() {
   const settings = await getSettings();
   const { lastResult } = await chrome.storage.local.get({ lastResult: null });
-  const xEnabled = settings.xProvider !== "off";
+  const xEnabled = settings.xProvider === "twitterapiio";
   const sourceCount = splitLines(settings.rssFeeds).length
     + (xEnabled ? splitLines(settings.accounts).length + splitLines(settings.topics).length : 0)
     + (settings.xProvider === "twitterapiio" && settings.globalDiscovery ? 1 : 0);
@@ -95,7 +110,7 @@ async function getStatus() {
     model: settings.model,
     sourceCount,
     xProvider: settings.xProvider,
-    xConfigured: settings.xProvider === "browser" || settings.xProvider === "off" || Boolean(settings.xApiKey),
+    xConfigured: settings.xProvider === "off" || Boolean(settings.xApiKey),
     lastResult: lastResult ? {
       at: lastResult.at,
       count: (lastResult.top || []).length,
@@ -130,8 +145,6 @@ async function refreshConfiguredSources(source) {
 
   const collection = await collectConfiguredSources(settings);
   const candidates = collection.candidates;
-  const tabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
-  const destination = tabs.find((candidate) => candidate.id != null);
   if (!candidates.length) {
     return {
       ok: false,
@@ -140,7 +153,7 @@ async function refreshConfiguredSources(source) {
       error: collection.errors[0] || "没有从配置的账号、主题、全站发现或 RSS 源获取到内容。"
     };
   }
-  return runAnalysis(candidates, source, destination?.id, collection.errors, candidates.length);
+  return runAnalysis(candidates, source, collection.errors, candidates.length);
 }
 
 async function collectConfiguredSources(settings) {
@@ -154,15 +167,6 @@ async function collectConfiguredSources(settings) {
       jobs.push({ name: "TwitterAPI.io", run: () => collectTwitterApiIoSources(settings, accounts, topics) });
     } else if (needsX) {
       jobs.push({ name: "TwitterAPI.io", run: async () => { throw new Error("X 数据源尚未配置：请填写 TwitterAPI.io API Key，或在设置中关闭 X 数据源。"); } });
-    }
-  } else if (settings.xProvider === "browser") {
-    const handles = normalizeHandles(accounts);
-    if (handles.length) {
-      const query = handles.map((handle) => `from:${handle}`).join(" OR ");
-      jobs.push({ name: "X 浏览器账号搜索", run: () => collectXPage(`https://x.com/search?q=${encodeURIComponent(query)}&f=live`, "关注账号") });
-    }
-    for (const topic of topics) {
-      jobs.push({ name: `X 浏览器主题：${topic}`, run: () => collectXPage(`https://x.com/search?q=${encodeURIComponent(topic)}&f=live`, `主题：${topic}`) });
     }
   }
   for (const feed of feeds) jobs.push({ name: `RSS：${feed}`, run: () => collectFeed(feed) });
@@ -272,15 +276,76 @@ async function selectValuableTrends(trends, settings) {
 }
 
 async function searchTwitterApiIo(query, queryType, sourceName, settings) {
+  const page = await searchTwitterApiIoPage(query, queryType, sourceName, settings);
+  return page.tweets;
+}
+
+async function searchTwitterApiIoPage(query, queryType, sourceName, settings, cursor = "") {
   const url = new URL("https://api.twitterapi.io/twitter/tweet/advanced_search");
   url.searchParams.set("query", query);
   url.searchParams.set("queryType", queryType);
+  if (cursor) url.searchParams.set("cursor", cursor);
   const data = await fetchJsonWithTimeout(url.href, {
     headers: { "X-API-Key": settings.xApiKey }
   });
   const tweets = data.tweets || data.data;
   if (!Array.isArray(tweets)) throw new Error(data.msg || data.message || "搜索接口没有返回帖子列表。");
-  return tweets.map((tweet) => normalizeXApiTweet(tweet, sourceName)).filter(Boolean);
+  return {
+    tweets: tweets.map((tweet) => normalizeXApiTweet(tweet, sourceName)).filter(Boolean),
+    hasNextPage: Boolean(data.has_next_page || data.hasNextPage),
+    nextCursor: String(data.next_cursor || data.nextCursor || "")
+  };
+}
+
+async function searchTwitterApiIoPages(query, queryType, sourceName, settings, maxPages = 3) {
+  const all = [];
+  let cursor = "";
+  for (let page = 0; page < maxPages; page += 1) {
+    const result = await searchTwitterApiIoPage(query, queryType, sourceName, settings, cursor);
+    all.push(...result.tweets);
+    if (!result.hasNextPage || !result.nextCursor) break;
+    cursor = result.nextCursor;
+  }
+  return all;
+}
+
+function parseXPageRequest(pageUrl) {
+  try {
+    const url = new URL(pageUrl);
+    if (!/^https?:$/.test(url.protocol) || !/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(url.hostname)) return null;
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments[0] === "search") {
+      const query = String(url.searchParams.get("q") || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 512);
+      if (!query) return null;
+      return { query, queryType: url.searchParams.get("f") === "live" ? "Latest" : "Top", sourceName: "X 当前页搜索（API）" };
+    }
+    const reserved = new Set(["home", "explore", "notifications", "messages", "bookmarks", "lists", "settings", "i", "compose", "login", "signup"]);
+    const handle = segments.length === 1 ? segments[0].replace(/^@/, "") : "";
+    if (/^[A-Za-z0-9_]{1,30}$/.test(handle) && !reserved.has(handle.toLowerCase())) {
+      return { query: `from:${handle}`, queryType: "Latest", sourceName: "X 当前页账号（API）" };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function runPageAnalysis(pageUrl) {
+  const settings = await getSettings();
+  const pageRequest = parseXPageRequest(pageUrl);
+  if (!pageRequest) {
+    throw new Error("为避免触碰你的 X 登录态，当前页分析只支持 X 搜索页或公开账号页；个性化首页、通知和消息页不会被读取。");
+  }
+  if (settings.xProvider !== "twitterapiio" || !settings.xApiKey) {
+    throw new Error("当前页分析需要启用 TwitterAPI.io 并填写 API Key；值见不会改用浏览器登录态读取 X。");
+  }
+  try {
+    const apiTweets = await searchTwitterApiIoPages(pageRequest.query, pageRequest.queryType, pageRequest.sourceName, settings, 3);
+    if (apiTweets.length) return runAnalysis(apiTweets, "manual", [], apiTweets.length);
+    throw new Error("当前页只读 API 没有返回帖子。");
+  } catch (error) {
+    throw new Error(`当前页只读 API 获取失败：${error.message || "请稍后重试"}`);
+  }
 }
 
 function normalizeXApiTweet(tweet, sourceName) {
@@ -341,54 +406,6 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 15000) {
   }
 }
 
-async function collectXPage(url, sourceName) {
-  let tab;
-  try {
-    tab = await chrome.tabs.create({ url, active: false });
-    await waitForTabLoad(tab.id, 15000);
-    await delay(2500);
-    const collected = await sendToContent(tab.id, { type: "COLLECT_SOURCE_TWEETS" });
-    return (collected?.tweets || []).map((tweet) => ({ ...tweet, sourceType: "x", sourceName }));
-  } catch {
-    return [];
-  } finally {
-    if (tab?.id) chrome.tabs.remove(tab.id).catch(() => {});
-  }
-}
-
-async function sendToContent(tabId, message) {
-  try {
-    return await chrome.tabs.sendMessage(tabId, message);
-  } catch (firstError) {
-    try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
-      await chrome.scripting.insertCSS({ target: { tabId }, files: ["content.css"] });
-      await delay(250);
-      return await chrome.tabs.sendMessage(tabId, message);
-    } catch {
-      throw new Error(`值见无法连接到 X 页面：${firstError.message}`);
-    }
-  }
-}
-
-async function waitForTabLoad(tabId, timeoutMs) {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    try {
-      const tab = await chrome.tabs.get(tabId);
-      if (tab.status === "complete") return;
-    } catch {
-      return;
-    }
-    await delay(250);
-  }
-  throw new Error("页面加载超时");
-}
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function collectFeed(feedUrl) {
   try {
     const parsedUrl = new URL(feedUrl);
@@ -446,7 +463,7 @@ function decodeEntities(value) {
   return String(value).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)));
 }
 
-async function runAnalysis(tweets, source, tabId, sourceErrors = [], readCount = null) {
+async function runAnalysis(tweets, source, sourceErrors = [], readCount = null) {
   const settings = await getSettings();
   if (!settings.apiKey) {
     return { ok: false, error: "请先在设置中填写 LLM API Key。" };
@@ -482,15 +499,12 @@ async function runAnalysis(tweets, source, tabId, sourceErrors = [], readCount =
   chrome.action.setBadgeText({ text: String(result.top.length || "") });
   chrome.action.setBadgeBackgroundColor({ color: "#171717" });
 
-  if (tabId) {
-    chrome.tabs.sendMessage(tabId, { type: "DISPLAY_RESULTS", result }).catch(() => {});
-  }
   if (source === "alarm" && settings.notify && result.top.length) {
     const { notifiedIds = [] } = await chrome.storage.local.get({ notifiedIds: [] });
     const notified = new Set(notifiedIds);
     const newTop = result.top.filter((item) => !notified.has(item.id));
     if (newTop.length) {
-      await createNotification({ ...result, top: newTop }, tabId);
+      await createNotification({ ...result, top: newTop });
       await chrome.storage.local.set({ notifiedIds: [...notifiedIds, ...newTop.map((item) => item.id)].slice(-500) });
     }
   }
@@ -623,7 +637,7 @@ function popularityBoost(metrics = {}) {
   return Math.min(5, Math.round(Math.log10(total + 1) * 1.5));
 }
 
-async function createNotification(result, tabId) {
+async function createNotification(result) {
   const id = `zhijian-${Date.now()}`;
   const first = result.top[0];
   await chrome.storage.local.set({ [`notification:${id}`]: chrome.runtime.getURL("dashboard.html") });
@@ -639,7 +653,7 @@ async function createNotification(result, tabId) {
 chrome.notifications.onClicked.addListener(async (notificationId) => {
   const key = `notification:${notificationId}`;
   const stored = await chrome.storage.local.get(key);
-  const url = stored[key] || "https://x.com/home";
+  const url = stored[key] || chrome.runtime.getURL("dashboard.html");
   chrome.tabs.create({ url });
   chrome.notifications.clear(notificationId);
   chrome.storage.local.remove(key);
@@ -671,9 +685,6 @@ async function testConnection() {
 async function testXSource() {
   const settings = await getSettings();
   if (settings.xProvider === "off") return { ok: false, error: "X 数据源已关闭。" };
-  if (settings.xProvider === "browser") {
-    return { ok: true, message: "浏览器实验模式不使用 API；扫描时会依赖你的 X 登录态并打开非活动标签页。" };
-  }
   if (!settings.xApiKey) return { ok: false, error: "请先填写 TwitterAPI.io API Key。" };
   const trends = await fetchTwitterApiIoTrends(settings);
   return { ok: true, message: `连接成功，当前地区返回 ${trends.length} 个趋势。` };

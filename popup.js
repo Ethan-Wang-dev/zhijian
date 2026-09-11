@@ -70,34 +70,19 @@ async function analyzeCurrentTab() {
   const button = document.getElementById("analyze");
   const status = document.getElementById("status");
   button.disabled = true;
-  status.textContent = "正在读取并分析当前页面…";
+  status.textContent = "正在根据当前 X 页面 URL 获取内容…";
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !/^https:\/\/(x|twitter)\.com\//.test(tab.url || "")) {
-      throw new Error("请先打开 X 网页。\n浏览器设置页、商店页等页面无法注入值见。\n");
+      throw new Error("请先打开 X 搜索页或公开账号页。为保护账号，值见不会读取个性化首页、通知或消息页。");
     }
-    const collected = await sendToCurrentTab(tab.id, { type: "COLLECT_TWEETS" });
-    const result = await chrome.runtime.sendMessage({ type: "RUN_ANALYSIS", tweets: collected?.tweets || [], capturedCount: collected?.capturedCount, source: "manual", tabId: tab.id });
+    const result = await chrome.runtime.sendMessage({ type: "RUN_PAGE_ANALYSIS", pageUrl: tab.url });
     if (!result?.ok) throw new Error(result?.error || "分析失败");
-    status.textContent = `完成：已读取 ${result.readCount || collected?.tweets?.length || 0} 条，${result.top.length} 条主推荐，${(result.archive || result.others || []).length} 条归档。\n请查看 X 页面右下角的值见面板。`;
+    status.textContent = `完成：已读取 ${result.readCount || 0} 条，${result.top.length} 条主推荐，${(result.archive || result.others || []).length} 条归档。`;
+    await chrome.runtime.sendMessage({ type: "OPEN_DASHBOARD" });
   } catch (error) {
     status.textContent = error.message || "分析失败";
   } finally {
     button.disabled = false;
-  }
-}
-
-async function sendToCurrentTab(tabId, message) {
-  try {
-    return await chrome.tabs.sendMessage(tabId, message);
-  } catch (firstError) {
-    try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
-      await chrome.scripting.insertCSS({ target: { tabId }, files: ["content.css"] });
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      return await chrome.tabs.sendMessage(tabId, message);
-    } catch {
-      throw new Error("值见还没有连接到当前 X 页面。请刷新 X 标签页，然后重新点击扩展按钮；如果仍失败，请在 chrome://extensions 中重新加载值见。");
-    }
   }
 }

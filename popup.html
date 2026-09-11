@@ -14,9 +14,9 @@
     <div id="results" class="results"></div>
     <button id="dashboard" class="secondary">打开完整结果面板</button>
     <button id="refresh">立即扫描全部配置源</button>
-    <button id="analyze" class="secondary">辅助：只分析当前 X 页面</button>
+    <button id="analyze" class="secondary">分析当前 X 搜索页 / 账号页</button>
     <button id="options" class="secondary">打开设置</button>
-    <p class="note">自动扫描不要求停留在 X 页面。默认通过外部数据 API 获取全站趋势、指定账号和主题，RSS/Atom 会直接读取。</p>
+    <p class="note">自动扫描不要求停留在 X 页面。手动分析只根据当前 X 搜索页或公开账号页的 URL，通过外部只读 API 分页获取更多内容；不会读取 DOM、登录态或个性化首页。</p>
   </main>
   <script src="popup.js"></script>
 </body>

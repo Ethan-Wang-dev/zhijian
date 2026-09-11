@@ -2,18 +2,15 @@
   "manifest_version": 3,
   "name": "值见",
   "short_name": "值见",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "每半小时，找到真正值得看的内容。",
   "permissions": [
     "storage",
     "alarms",
     "notifications",
-    "tabs",
-    "scripting"
+    "tabs"
   ],
   "host_permissions": [
-    "https://x.com/*",
-    "https://twitter.com/*",
     "https://api.twitterapi.io/*",
     "https://api.openai.com/*",
     "https://api.deepseek.com/*",
@@ -31,17 +28,6 @@
     "default_popup": "popup.html"
   },
   "options_page": "options.html",
-  "content_scripts": [
-    {
-      "matches": [
-        "https://x.com/*",
-        "https://twitter.com/*"
-      ],
-      "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_idle"
-    }
-  ],
   "icons": {
     "16": "icon-16.png",
     "48": "icon-48.png",

@@ -86,3 +86,34 @@ test("limits candidates without starving later sources", () => {
   ], 4);
   assert.deepEqual(Array.from(result, (item) => item.id), ["a1", "b1", "a2", "b2"]);
 });
+
+test("derives a read-only API query from an X page", () => {
+  const context = loadBackground();
+  const search = context.parseXPageRequest("https://x.com/search?q=AI%20agents&f=live");
+  assert.equal(search.query, "AI agents");
+  assert.equal(search.queryType, "Latest");
+  const profile = context.parseXPageRequest("https://x.com/example_user");
+  assert.equal(profile.query, "from:example_user");
+  assert.equal(context.parseXPageRequest("https://x.com/home"), null);
+});
+
+test("migrates the removed browser provider to the read-only API provider", () => {
+  const context = loadBackground();
+  assert.equal(context.normalizeSettings({ xProvider: "browser" }).xProvider, "twitterapiio");
+  assert.equal(context.normalizeSettings({ xProvider: "off" }).xProvider, "off");
+});
+
+test("does not allow current-page analysis for personalized X pages", async () => {
+  const context = loadBackground();
+  await assert.rejects(
+    context.runPageAnalysis("https://x.com/home"),
+    /只支持 X 搜索页或公开账号页/
+  );
+});
+
+test("manifest does not grant page-injection or X-site permissions", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8"));
+  assert.ok(!manifest.permissions.includes("scripting"));
+  assert.equal(manifest.content_scripts, undefined);
+  assert.ok(!manifest.host_permissions.some((origin) => /(^|\/)x\.com|twitter\.com/.test(origin)));
+});
